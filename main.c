@@ -3,10 +3,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define INPUT_SIZE 500000
-
-double *vector;
-int size = 0;
+int arraySize = 0;
 
 struct timespec initialSortTime, finalSortTime;
 struct timespec initialSearchTime, finalSearchTime;
@@ -30,6 +27,7 @@ struct timeRegistry getTimeRegistry(struct timespec initial, struct timespec fin
   return registry;
 }
 
+
 void printTimes(int printSortTime, int printSearchTime) {
   struct timeRegistry searchRegistry;
   struct timeRegistry sortRegistry;
@@ -51,64 +49,77 @@ void printTimes(int printSortTime, int printSearchTime) {
       searchRegistry.seconds+sortRegistry.seconds, searchRegistry.nanoseconds+sortRegistry.nanoseconds);
 }
 
-void generateInput() {
-  FILE *input = fopen("./vetor.dat", "w");
-  FILE *search = fopen("./busca.dat", "w");
 
-  srand((unsigned)time(NULL));
-
-  for(int index = 0; index < INPUT_SIZE; index++) {
-    double randomNumber = ((double) rand()/RAND_MAX) * 100;
-
-    if(index == 2 || index == 4 || index == 10 || index == 20)
-      fprintf(search, "%lf\n", randomNumber);
-
-    fprintf(input, "%lf\n", randomNumber);
-  }
-
-  fclose(search);
-  fclose(input);
-}
-
-void *getInputVector() {
+double *getInputVector() {
   FILE *input = fopen("./vetor.dat", "r");
 
-  vector = (double *) malloc(INPUT_SIZE * sizeof(double));
+  double readedNumber = 0;
 
-  while(fscanf(input, "%lf", &vector[size]) != EOF) size++;
+  double *array = (double *) malloc(0 * sizeof(double));
 
-  fclose(input);
-}
+  while(fscanf(input, "%lf", &readedNumber) != EOF) {
+    arraySize++;
 
-int linearSearch(double target) {
-  for(int index = 0; index < size; index++) {
-    double difference = target > vector[index] ? target - vector[index] : vector[index] - target;
+    array = realloc(array, arraySize * sizeof(double));
 
-    if(difference < 0.0001) return index;
+    array[arraySize-1] = readedNumber;
   }
 
+  fclose(input);
+
+  return array;
+}
+
+int isCloseEnought(double a, double b) {
+  if(a < 0 && b < 0) {
+    a = a * -1;
+    b = b * -1;
+  }
+
+  double difference = a > b ? 
+          a - b : b - a;
+
+  if(difference < 0.0001) return 1;
+
+  return 0;
+}
+
+
+int linearSearch(double *array, double target, int isSorted) {
+  if(isSorted == 1)
+    for(int index = 0; index < arraySize; index++) {
+      if(isCloseEnought(target, array[index]) == 1)
+        return index;
+
+      if(array[index] > target)
+        return -1;
+    }
+
+  else
+    for(int index = 0; index < arraySize; index++)
+        if(isCloseEnought(target, array[index]) == 1)
+          return index;
+  
+    
   return -1;
 }
 
-int binarySearch(double left, double right, double target) {
+int binarySearch(double *array, double left, double right, double target) {
     if (right >= left) { 
         int middle = left + (right - left) / 2;
 
-        double difference = target > vector[middle] ? 
-          target - vector[middle] : vector[middle] - target;
+        if(isCloseEnought(target, array[middle]) == 1) return middle;
   
-        if (difference < 0.0001) return middle; 
-  
-        if (vector[middle] > target) 
-            return binarySearch(left, middle - 1, target); 
+        if (array[middle] > target) 
+            return binarySearch(array, left, middle - 1, target); 
 
-        return binarySearch(middle+1, right, target); 
+        return binarySearch(array, middle+1, right, target); 
     }
   
     return -1;
-} 
+}
 
-void search(int useLinearSearch, int useBinarySearch) {
+void search(double *array, int useLinearSearch, int useBinarySearch, int isSorted) {
   FILE *searchFile = fopen("./busca.dat", "r");
   FILE *outputFile = fopen("./resultado.dat", "w");
 
@@ -116,32 +127,33 @@ void search(int useLinearSearch, int useBinarySearch) {
   int targetIndex;
 
   if(useLinearSearch == 1 && useBinarySearch == 0) {
+    clock_gettime(CLOCK_REALTIME, &initialSearchTime);
+    
     while(fscanf(searchFile, "%lf", &target) != EOF) {
-      clock_gettime(CLOCK_REALTIME, &initialSearchTime);
-
-      targetIndex = linearSearch(target);
-
-      clock_gettime(CLOCK_REALTIME, &finalSearchTime);
+      targetIndex = linearSearch(array, target, isSorted);
 
       if(targetIndex == -1)
-        fprintf(outputFile, "[-1] [0.0] [%lf]\n", target);
+        fprintf(outputFile, "-1 0.0 %lf\n", target);
       else
-        fprintf(outputFile, "[%d] [%lf] [%lf]\n", targetIndex, vector[targetIndex], target);
+        fprintf(outputFile, "%d %lf %lf\n", targetIndex, array[targetIndex], target);
     };
+
+    clock_gettime(CLOCK_REALTIME, &finalSearchTime);
   }
   else if(useBinarySearch == 1 && useLinearSearch == 0) {
-    while(fscanf(searchFile, "%lf", &target) != EOF) {
-      clock_gettime(CLOCK_REALTIME, &initialSearchTime);
-      
-      targetIndex = binarySearch(0, size - 1, target);
+    clock_gettime(CLOCK_REALTIME, &initialSearchTime);
+    
+    while(fscanf(searchFile, "%lf", &target) != EOF) {  
+      targetIndex = binarySearch(array, 0, arraySize - 1, target);
 
-      clock_gettime(CLOCK_REALTIME, &finalSearchTime);
 
       if(targetIndex == -1)
-        fprintf(outputFile, "[-1] [0.0] [%lf]\n", target);
+        fprintf(outputFile, "-1 0.0 %lf\n", target);
       else
-        fprintf(outputFile, "[%d] [%lf] [%lf]\n", targetIndex, vector[targetIndex], target);
+        fprintf(outputFile, "%d %lf %lf\n", targetIndex, array[targetIndex], target);
     };
+
+    clock_gettime(CLOCK_REALTIME, &finalSearchTime);
   }
 
   fclose(searchFile);
@@ -149,80 +161,73 @@ void search(int useLinearSearch, int useBinarySearch) {
 }
 
 
-int partition (int low, int high) {
+int partition (double *array, int low, int high) {
   int index = (low - 1);
   double temporary = 0;
-  double pivot = vector[high];
+  double pivot = array[high];
 
   for (int j = low; j <= high - 1; j++) {
-    if (vector[j] < pivot) {
+    if (array[j] < pivot) {
       index++;
 
-      temporary = vector[index];
-      vector[index] = vector[j];
-      vector[j] = temporary;
+      temporary = array[index];
+      array[index] = array[j];
+      array[j] = temporary;
     }
   }
 
-  temporary = vector[index + 1];
-  vector[index + 1] = vector[high];
-  vector[high] = temporary;
+  temporary = array[index + 1];
+  array[index + 1] = array[high];
+  array[high] = temporary;
 
   return (index + 1);
 }
 
-void quickSort(int low, int high) {
+void quickSort(double *array, int low, int high) {
   if (low < high) {
-      int partitionIndex = partition(low, high); 
+      int partitionIndex = partition(array, low, high); 
 
-      quickSort(low, partitionIndex - 1);
-      quickSort(partitionIndex + 1, high);
+      quickSort(array, low, partitionIndex - 1);
+      quickSort(array, partitionIndex + 1, high);
   } 
 }
 
-void shellSort() {
+void shellSort(double *array) {
   clock_gettime(CLOCK_REALTIME, &initialSortTime);
 
-  for (int gap = size/2; gap > 0; gap /= 2) { 
-    for (int i = gap; i < size; i += 1) {
-      double temporary = vector[i]; 
+  for (int gap = arraySize/2; gap > 0; gap /= 2) { 
+    for (int i = gap; i < arraySize; i += 1) {
+      double temporary = array[i]; 
       
       int j;
-      for (j = i; j >= gap && vector[j - gap] > temporary; j -= gap) 
-        vector[j] = vector[j - gap];
+      for (j = i; j >= gap && array[j - gap] > temporary; j -= gap) 
+        array[j] = array[j - gap];
           
-      vector[j] = temporary; 
+      array[j] = temporary; 
     } 
   }
 
   clock_gettime(CLOCK_REALTIME, &finalSortTime);
 }
 
-void insertionSort(){
+void insertionSort(double *array){
     clock_gettime(CLOCK_REALTIME, &initialSortTime);
     
     int i, j;
     double key;
 
-    for (i = 1; i < size; i++) {
-        key = vector[i];
+    for (i = 1; i < arraySize; i++) {
+        key = array[i];
         j = i - 1;
 
-        while (j >= 0 && vector[j] > key) {
-            vector[j + 1] = vector[j];
+        while (j >= 0 && array[j] > key) {
+            array[j + 1] = array[j];
             j = j - 1;
         }
-        vector[j + 1] = key;
+        array[j + 1] = key;
     }
 
     clock_gettime(CLOCK_REALTIME, &finalSortTime);
-}
-
-void print() {
-  for(int index = 0; index < size; index++)
-    printf("%lf\n", vector[index]);
-
-  printf("\n");
 }
 
 int main() {
@@ -239,61 +244,68 @@ int main() {
   printf("Operação: ");
   scanf("%d", &option);
 
-  getInputVector();
+  double *array = getInputVector();
+  int repeat = 5;
 
   switch (option) {
     case 1:
-      search(1, 0); // Sequential Search
+      search(array, 1, 0, 0); // Sequential Search
 
       printTimes(0, 1); // Sequential Search
       break;
 
     case 2:
-      insertionSort();
-      print();
+      insertionSort(array);
 
-      search(1,0); // Sequential Search
+      search(array, 1,0,1); // Sequential Search
       
       printTimes(1, 1);
+
+      
       break;
 
     case 3:
-      shellSort();
-
-      search(1,0); //Sequential Search;
+      shellSort(array);
+      
+      search(array, 1,0,1); //Sequential Search;
       
       printTimes(1, 1);
+
       break;
 
     case 4:
-      quickSort(0, size - 1);
+      clock_gettime(CLOCK_REALTIME, &initialSortTime);
+      quickSort(array, 0, arraySize - 1);
+      clock_gettime(CLOCK_REALTIME, &finalSortTime);
 
-      search(1,0); //Sequential Search;
+      search(array, 1,0,1); //Sequential Search;
       
       printTimes(1, 1);
+      
       break;
 
     case 5:
-      insertionSort();
+      insertionSort(array);
 
-      search(0,1); //Binary Search
+      search(array, 0,1,1); //Binary Search
 
       printTimes(1, 1);
       break;
 
     case 6:
-      shellSort();
+      shellSort(array);
 
-      search(0,1); //Binary Search
+      search(array, 0,1,1); //Binary Search
 
       printTimes(1, 1);
       break;
 
     case 7:
-      quickSort(0, size - 1);
+      clock_gettime(CLOCK_REALTIME, &initialSortTime);
+      quickSort(array, 0, arraySize - 1);
+      clock_gettime(CLOCK_REALTIME, &finalSortTime);
       
-
-      search(0,1); //Binary Search
+      search(array, 0,1,1); //Binary Search
 
       printTimes(1, 1);
       break;
@@ -301,5 +313,6 @@ int main() {
     default:
       printf("Escolha uma opção válida.");
   }
+
   return 0;
 }
