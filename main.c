@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
 
 int arraySize = 0;
@@ -8,11 +7,25 @@ int arraySize = 0;
 struct timespec initialSortTime, finalSortTime;
 struct timespec initialSearchTime, finalSearchTime;
 
+
+/**
+ * @brief struct that will be used to store the difference of times.
+ */
 struct timeRegistry {
   long int seconds;
   long int nanoseconds;
 };
 
+
+
+/**
+  * @brief Function that get the time difference between two timespecs.
+  * 
+  * @param initial: struct timespec containing the initial time.
+  * @param final: struct timespec containing the final time.
+  * 
+  * @return struct timeRegistry containing the difference of time between the two input timespecs.
+*/
 struct timeRegistry getTimeRegistry(struct timespec initial, struct timespec final) {
   struct timeRegistry registry;
 
@@ -28,7 +41,13 @@ struct timeRegistry getTimeRegistry(struct timespec initial, struct timespec fin
 }
 
 
-void printTimes(int printSortTime, int printSearchTime) {
+
+/**
+  * @brief Function that prints the processing times (sorting and/or searching)
+  * 
+  * @param printSortTime: flag that indicates to print the sorting time.
+*/
+void printTimes(int printSortTime) {
   struct timeRegistry searchRegistry;
   struct timeRegistry sortRegistry;
 
@@ -38,18 +57,22 @@ void printTimes(int printSortTime, int printSearchTime) {
     printf("Tempo de ordenação: %ld.%09ld\n", sortRegistry.seconds, sortRegistry.nanoseconds);
   }
 
-  if(printSearchTime == 1) {
-    searchRegistry = getTimeRegistry(initialSearchTime, finalSearchTime);
+  searchRegistry = getTimeRegistry(initialSearchTime, finalSearchTime);
 
-    printf("Tempo de busca: %ld.%09ld\n", searchRegistry.seconds, searchRegistry.nanoseconds);
-  }
+  printf("Tempo de busca: %ld.%09ld\n", searchRegistry.seconds, searchRegistry.nanoseconds);
 
-  if(printSearchTime == 1 && printSortTime == 1)
+  if(printSortTime == 1)
     printf("Tempo total: %ld.%09ld\n", 
       searchRegistry.seconds+sortRegistry.seconds, searchRegistry.nanoseconds+sortRegistry.nanoseconds);
 }
 
 
+
+/**
+  * @brief Function that create an array with the input values of vetor.dat
+  * 
+  * @return an array of double, containing all elements presents in vetor.dat (in same order).
+*/
 double *getInputVector() {
   FILE *input = fopen("./vetor.dat", "r");
 
@@ -70,6 +93,16 @@ double *getInputVector() {
   return array;
 }
 
+
+
+/**
+  * @brief Function that checks if an element is close enought of another element to be considered equal.
+  * 
+  * @param a: firsts element of comparision
+  * @param b: second element of comparision
+
+  * @return 1, if the two elements are close enought, or 0, if not.
+*/
 int isCloseEnought(double a, double b) {
   if(a < 0 && b < 0) {
     a = a * -1;
@@ -85,6 +118,16 @@ int isCloseEnought(double a, double b) {
 }
 
 
+
+/**
+  * @brief Function that implements linear search
+  * 
+  * @param array: array where the elements of busca.dat will be searched.
+  * @param target: element to be found.
+  * @param isSorted: flag that indicates if the passed array is sorted. 
+
+  * @return index of target element (or -1, if that element was not found).
+*/
 int linearSearch(double *array, double target, int isSorted) {
   if(isSorted == 1)
     for(int index = 0; index < arraySize; index++) {
@@ -104,6 +147,18 @@ int linearSearch(double *array, double target, int isSorted) {
   return -1;
 }
 
+
+
+/**
+  * @brief Function that implements binary search
+  * 
+  * @param array: array where the elements of busca.dat will be searched.
+  * @param left: index of element in left most position.
+  * @param right: index of element in right most position.
+  * @param target: element to be found.
+  * 
+  * @return index of target element (or -1, if that element was not found).
+*/
 int binarySearch(double *array, double left, double right, double target) {
     if (right >= left) { 
         int middle = left + (right - left) / 2;
@@ -119,6 +174,16 @@ int binarySearch(double *array, double left, double right, double target) {
     return -1;
 }
 
+
+
+/**
+  * @brief Function that search all elements in busca.dat, according with the selected search method.
+  * 
+  * @param array: array where the elements of busca.dat will be searched.
+  * @param useLinearSearch: flag that indicates to use linear search method.
+  * @param useBinarySearch: flag that indicates to use binary search method.
+  * @param isSorted: flag that indicates if the passed array is sorted.
+*/
 void search(double *array, int useLinearSearch, int useBinarySearch, int isSorted) {
   FILE *searchFile = fopen("./busca.dat", "r");
   FILE *outputFile = fopen("./resultado.dat", "w");
@@ -161,6 +226,17 @@ void search(double *array, int useLinearSearch, int useBinarySearch, int isSorte
 }
 
 
+
+/**
+  * @brief Function that takes last element as pivot, places the pivot element at its correct position in sorted 
+    array, and places all smaller (smaller than pivot) to left of pivot and all greater elements to right of pivot
+  * 
+  * @param array: array containing elements of vetor.dat to be ordered.
+  * @param low: initial index
+  * @param high: final index
+  * 
+  * @return index of partition
+*/
 int partition (double *array, int low, int high) {
   int index = (low - 1);
   double temporary = 0;
@@ -183,6 +259,15 @@ int partition (double *array, int low, int high) {
   return (index + 1);
 }
 
+
+
+/**
+  * @brief Function that implements Quick Sort method.
+  * 
+  * @param array: array containing elements of vetor.dat to be ordered.
+  * @param low: initial index
+  * @param high: final index
+*/
 void quickSort(double *array, int low, int high) {
   if (low < high) {
       int partitionIndex = partition(array, low, high); 
@@ -192,6 +277,13 @@ void quickSort(double *array, int low, int high) {
   } 
 }
 
+
+
+/**
+  * @brief Function that implements Shell Sort method.
+  * 
+  * @param array: array containing elements of vetor.dat to be ordered.
+*/
 void shellSort(double *array) {
   clock_gettime(CLOCK_REALTIME, &initialSortTime);
 
@@ -210,6 +302,13 @@ void shellSort(double *array) {
   clock_gettime(CLOCK_REALTIME, &finalSortTime);
 }
 
+
+
+/**
+  * @brief Function that implements Insertion Sort method.
+  * 
+  * @param array: array containing elements of vetor.dat to be ordered.
+*/
 void insertionSort(double *array){
     clock_gettime(CLOCK_REALTIME, &initialSortTime);
     
@@ -230,6 +329,8 @@ void insertionSort(double *array){
     clock_gettime(CLOCK_REALTIME, &finalSortTime);
 }
 
+
+
 int main() {
   int option;
 
@@ -245,13 +346,12 @@ int main() {
   scanf("%d", &option);
 
   double *array = getInputVector();
-  int repeat = 5;
 
   switch (option) {
     case 1:
       search(array, 1, 0, 0); // Sequential Search
 
-      printTimes(0, 1); // Sequential Search
+      printTimes(0); // Sequential Search
       break;
 
     case 2:
@@ -259,7 +359,7 @@ int main() {
 
       search(array, 1,0,1); // Sequential Search
       
-      printTimes(1, 1);
+      printTimes(1);
 
       
       break;
@@ -269,7 +369,7 @@ int main() {
       
       search(array, 1,0,1); //Sequential Search;
       
-      printTimes(1, 1);
+      printTimes(1);
 
       break;
 
@@ -280,7 +380,7 @@ int main() {
 
       search(array, 1,0,1); //Sequential Search;
       
-      printTimes(1, 1);
+      printTimes(1);
       
       break;
 
@@ -289,7 +389,7 @@ int main() {
 
       search(array, 0,1,1); //Binary Search
 
-      printTimes(1, 1);
+      printTimes(1);
       break;
 
     case 6:
@@ -297,7 +397,7 @@ int main() {
 
       search(array, 0,1,1); //Binary Search
 
-      printTimes(1, 1);
+      printTimes(1);
       break;
 
     case 7:
@@ -307,7 +407,7 @@ int main() {
       
       search(array, 0,1,1); //Binary Search
 
-      printTimes(1, 1);
+      printTimes(1);
       break;
 
     default:
